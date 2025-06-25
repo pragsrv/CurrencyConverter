@@ -4,34 +4,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const toCurrencySelect = document.getElementById('to-currency');
     const convertButton = document.getElementById('convert');
     const reverseButton = document.getElementById('reverse');
-    const resultParagraph = document.getElementById('result');
+    const resultDisplay = document.getElementById('result');
     const errorMessage = document.getElementById('error-message');
+    const loadingElement = document.getElementById('loading');
 
-    const API_URL = 'https://api.exchangerate-api.com/v4/latest/USD'; // Base currency USD
-
+    const API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
     let rates = {};
+
+    function createStars() {
+        const starsContainer = document.querySelector('.stars');
+        for (let i = 0; i < 100; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            starsContainer.appendChild(star);
+        }
+    }
+
+    function createParticles() {
+        const card = document.querySelector('.converter-card');
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 6 + 's';
+            card.appendChild(particle);
+        }
+    }
 
     const fetchRates = async () => {
         try {
+            loadingElement.style.display = 'block';
+            resultDisplay.style.opacity = '0.5';
+            
             const response = await fetch(API_URL);
+            if (!response.ok) throw new Error('Network response was not ok');
+            
             const data = await response.json();
-            rates = data.rates;
-            // Update dropdown options dynamically based on available currencies
+            rates = { USD: 1, ...data.rates };
             updateCurrencyOptions(Object.keys(rates));
+            
+            loadingElement.style.display = 'none';
+            resultDisplay.style.opacity = '1';
+            errorMessage.textContent = '';
         } catch (error) {
             console.error('Error fetching currency rates:', error);
-            resultParagraph.textContent = 'Failed to fetch currency rates.';
+            errorMessage.textContent = 'Failed to fetch currency rates. Please try again.';
+            loadingElement.style.display = 'none';
+            resultDisplay.style.opacity = '1';
         }
     };
 
     const updateCurrencyOptions = (currencies) => {
+        const sortedCurrencies = currencies.sort();
+        
         fromCurrencySelect.innerHTML = '';
         toCurrencySelect.innerHTML = '';
 
-        currencies.forEach(currency => {
-            fromCurrencySelect.add(new Option(currency, currency));
-            toCurrencySelect.add(new Option(currency, currency));
+        sortedCurrencies.forEach(currency => {
+            const option1 = new Option(currency, currency);
+            const option2 = new Option(currency, currency);
+            fromCurrencySelect.add(option1);
+            toCurrencySelect.add(option2);
         });
+
+        fromCurrencySelect.value = 'USD';
+        toCurrencySelect.value = 'EUR';
     };
 
     const validateInput = () => {
@@ -47,14 +88,17 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage.textContent = 'Please select different currencies for conversion.';
             return false;
         }
+        if (Object.keys(rates).length === 0) {
+            errorMessage.textContent = 'Currency rates not loaded. Please try again.';
+            return false;
+        }
+        
         errorMessage.textContent = '';
         return true;
     };
 
     const convertCurrency = () => {
-        if (!validateInput()) {
-            return;
-        }
+        if (!validateInput()) return;
 
         const amount = parseFloat(amountInput.value);
         const fromCurrency = fromCurrencySelect.value;
@@ -62,7 +106,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rate = rates[toCurrency] / rates[fromCurrency];
         const convertedAmount = amount * rate;
-        resultParagraph.textContent = `${convertedAmount.toFixed(2)} ${toCurrency}`;
+        
+        resultDisplay.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            resultDisplay.style.transform = 'scale(1)';
+        }, 200);
+        
+        resultDisplay.textContent = `${convertedAmount.toFixed(2)} ${toCurrency}`;
     };
 
     const reverseCurrencies = () => {
@@ -72,35 +122,33 @@ document.addEventListener('DOMContentLoaded', () => {
         fromCurrencySelect.value = toCurrency;
         toCurrencySelect.value = fromCurrency;
 
-        convertCurrency();
+        if (amountInput.value) {
+            convertCurrency();
+        }
     };
 
     convertButton.addEventListener('click', convertCurrency);
     reverseButton.addEventListener('click', reverseCurrencies);
-
-    // Fetch rates and initialize currency options on load
-    fetchRates();
-    const convertcurrency = () => {
-        if (!validateInput()) {
-            return;
+    
+    amountInput.addEventListener('input', () => {
+        if (amountInput.value && validateInput()) {
+            convertCurrency();
         }
+    });
 
-        const amount = parseFloat(amountInput.value);
-        const fromCurrency = fromCurrencySelect.value;
-        const toCurrency = toCurrencySelect.value;
+    fromCurrencySelect.addEventListener('change', () => {
+        if (amountInput.value && validateInput()) {
+            convertCurrency();
+        }
+    });
 
-        const rate = rates[toCurrency] / rates[fromCurrency];
-        const convertedAmount = amount * rate;
-        resultParagraph.textContent = `${convertedAmount.toFixed(2)} ${toCurrency}`;
-    };
+    toCurrencySelect.addEventListener('change', () => {
+        if (amountInput.value && validateInput()) {
+            convertCurrency();
+        }
+    });
 
-    const reversecurrencies = () => {
-        const fromCurrency = fromCurrencySelect.value;
-        const toCurrency = toCurrencySelect.value;
-
-        fromCurrencySelect.value = toCurrency;
-        toCurrencySelect.value = fromCurrency;
-
-        convertCurrency();
-    };
+    createStars();
+    createParticles();
+    fetchRates();
 });
